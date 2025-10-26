@@ -1,0 +1,5 @@
+{
+  "name": "WiFi Business Dashboard",
+  "description": "A comprehensive dashboard for managing a WiFi business, including user and product management, and payment processing. Features an AI-powered tool to generate marketing descriptions for WiFi plans.",
+  "requestFramePermissions": []
+}
