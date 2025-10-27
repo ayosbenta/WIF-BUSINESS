@@ -81,7 +81,7 @@ const ProductForm: React.FC<{ product?: Product; onSave: (product: Product | Omi
 };
 
 const Products: React.FC = () => {
-    const { state, dispatch } = useAppContext();
+    const { state, dispatch, userRole } = useAppContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
@@ -130,10 +130,12 @@ const Products: React.FC = () => {
     return (
         <div>
             <div className="flex justify-end mb-4">
-                 <button onClick={() => handleOpenModal()} className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-lg">
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    Add Plan
-                </button>
+                {userRole === 'admin' && (
+                    <button onClick={() => handleOpenModal()} className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-lg">
+                        <PlusIcon className="h-5 w-5 mr-2" />
+                        Add Plan
+                    </button>
+                )}
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {state.products.map(product => (
@@ -149,10 +151,12 @@ const Products: React.FC = () => {
                              <p className="text-slate-500 dark:text-slate-400 mb-4 text-sm h-12">{product.description}</p>
                             <p className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-4">₱{product.price.toLocaleString()}/month</p>
                         </div>
-                        <div className="flex justify-end items-center space-x-2 border-t dark:border-slate-700 pt-4 mt-4">
-                            <button onClick={() => handleOpenModal(product)} className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-full"><EditIcon className="h-5 w-5" /></button>
-                            <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-slate-700 rounded-full"><DeleteIcon className="h-5 w-5" /></button>
-                        </div>
+                        {userRole === 'admin' && (
+                            <div className="flex justify-end items-center space-x-2 border-t dark:border-slate-700 pt-4 mt-4">
+                                <button onClick={() => handleOpenModal(product)} className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-full"><EditIcon className="h-5 w-5" /></button>
+                                <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-slate-700 rounded-full"><DeleteIcon className="h-5 w-5" /></button>
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>

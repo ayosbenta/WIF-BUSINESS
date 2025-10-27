@@ -6,10 +6,12 @@ import Dashboard from './components/Dashboard';
 import Users from './components/Users';
 import Products from './components/Products';
 import Payments from './components/Payments';
+import LoginPage from './components/LoginPage';
 import { WifiIcon } from './components/icons';
 import { dataService } from './services/api';
 
 type View = 'dashboard' | 'users' | 'products' | 'payments';
+export type UserRole = 'admin' | 'collector';
 
 const LoadingScreen: React.FC = () => (
     <div className="flex flex-col items-center justify-center h-screen bg-slate-100 dark:bg-slate-900">
@@ -43,9 +45,9 @@ const ErrorScreen: React.FC<{ message: string; onRetry: () => void }> = ({ messa
 
 
 const AppContent: React.FC = () => {
-  const [activeView, setActiveView] = useState<View>('dashboard');
+  const { state, isLoading, error, reloadData, userRole } = useAppContext();
+  const [activeView, setActiveView] = useState<View>(userRole === 'collector' ? 'payments' : 'dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { state, isLoading, error, reloadData } = useAppContext();
   
   // Close sidebar when view changes on mobile
   useEffect(() => {
@@ -67,15 +69,15 @@ const AppContent: React.FC = () => {
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard />;
+        return userRole === 'admin' ? <Dashboard /> : <Payments />;
       case 'users':
-        return <Users />;
+        return userRole === 'admin' ? <Users /> : <Payments />;
       case 'products':
-        return <Products />;
+        return userRole === 'admin' ? <Products /> : <Payments />;
       case 'payments':
         return <Payments />;
       default:
-        return <Dashboard />;
+        return userRole === 'admin' ? <Dashboard /> : <Payments />;
     }
   };
 
@@ -110,8 +112,18 @@ const AppContent: React.FC = () => {
 
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={(role) => {
+        setUserRole(role);
+        setIsAuthenticated(true);
+    }} />;
+  }
+  
   return (
-    <AppProvider>
+    <AppProvider userRole={userRole}>
       <AppContent />
     </AppProvider>
   );

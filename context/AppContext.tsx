@@ -1,6 +1,7 @@
 import React, { createContext, useReducer, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { User, Product, Payment } from '../types';
 import { api } from '../services/api';
+import { UserRole } from '../App';
 
 interface AppState {
   users: User[];
@@ -65,6 +66,7 @@ interface AppContextType {
     isLoading: boolean;
     error: string | null;
     reloadData: () => void;
+    userRole: UserRole | null;
 }
 
 const AppContext = createContext<AppContextType>({
@@ -73,9 +75,10 @@ const AppContext = createContext<AppContextType>({
   isLoading: true,
   error: null,
   reloadData: () => {},
+  userRole: null,
 });
 
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AppProvider: React.FC<{ children: ReactNode, userRole: UserRole | null }> = ({ children, userRole }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +100,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     fetchData();
   }, [fetchData]);
 
-  return <AppContext.Provider value={{ state, dispatch, isLoading, error, reloadData: fetchData }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ state, dispatch, isLoading, error, reloadData: fetchData, userRole }}>{children}</AppContext.Provider>;
 };
 
 export const useAppContext = () => useContext(AppContext);

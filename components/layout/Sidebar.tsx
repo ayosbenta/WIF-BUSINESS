@@ -1,5 +1,6 @@
 import React from 'react';
 import { DashboardIcon, UsersIcon, WifiIcon, PaymentIcon, CloseIcon } from '../icons';
+import { useAppContext } from '../../context/AppContext';
 
 type View = 'dashboard' | 'users' | 'products' | 'payments';
 
@@ -40,6 +41,8 @@ const NavItem: React.FC<{
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, setIsOpen }) => {
+  const { userRole } = useAppContext();
+
   return (
     <aside className={`fixed inset-y-0 left-0 bg-white dark:bg-slate-800 shadow-lg z-30 w-64 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:shadow-md md:flex-shrink-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="flex justify-between items-center p-6">
@@ -53,27 +56,31 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, se
       </div>
       <nav className="mt-6 px-4">
         <ul>
-          <NavItem
-            view="dashboard"
-            activeView={activeView}
-            setActiveView={setActiveView}
-            icon={<DashboardIcon className="h-6 w-6" />}
-            label="Dashboard"
-          />
-          <NavItem
-            view="users"
-            activeView={activeView}
-            setActiveView={setActiveView}
-            icon={<UsersIcon className="h-6 w-6" />}
-            label="Users"
-          />
-          <NavItem
-            view="products"
-            activeView={activeView}
-            setActiveView={setActiveView}
-            icon={<WifiIcon className="h-6 w-6" />}
-            label="Products"
-          />
+            {userRole === 'admin' && (
+                <>
+                    <NavItem
+                        view="dashboard"
+                        activeView={activeView}
+                        setActiveView={setActiveView}
+                        icon={<DashboardIcon className="h-6 w-6" />}
+                        label="Dashboard"
+                    />
+                    <NavItem
+                        view="users"
+                        activeView={activeView}
+                        setActiveView={setActiveView}
+                        icon={<UsersIcon className="h-6 w-6" />}
+                        label="Users"
+                    />
+                    <NavItem
+                        view="products"
+                        activeView={activeView}
+                        setActiveView={setActiveView}
+                        icon={<WifiIcon className="h-6 w-6" />}
+                        label="Products"
+                    />
+                </>
+            )}
           <NavItem
             view="payments"
             activeView={activeView}

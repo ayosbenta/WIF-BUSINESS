@@ -68,7 +68,7 @@ const UserForm: React.FC<{ user?: User; onSave: (user: User | Omit<User, 'id' | 
 
 
 const Users: React.FC = () => {
-    const { state, dispatch } = useAppContext();
+    const { state, dispatch, userRole } = useAppContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
@@ -132,10 +132,12 @@ const Users: React.FC = () => {
     return (
         <div>
             <div className="flex justify-end mb-4">
-                <button onClick={() => handleOpenModal()} className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-lg">
-                    <PlusIcon className="h-5 w-5 mr-2" />
-                    Add User
-                </button>
+                {userRole === 'admin' && (
+                    <button onClick={() => handleOpenModal()} className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-lg">
+                        <PlusIcon className="h-5 w-5 mr-2" />
+                        Add User
+                    </button>
+                )}
             </div>
 
             {/* Mobile View - Cards */}
@@ -156,10 +158,12 @@ const Users: React.FC = () => {
                                 <p><span className="font-semibold">Plan:</span> {state.products.find(p => p.id === user.planId)?.name || 'N/A'}</p>
                                 <p><span className="font-semibold">Joined:</span> {user.joinDate}</p>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <button onClick={() => handleOpenModal(user)} className="p-2 text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"><EditIcon className="h-5 w-5" /></button>
-                                <button onClick={() => handleDeleteUser(user.id)} className="p-2 text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"><DeleteIcon className="h-5 w-5" /></button>
-                            </div>
+                            {userRole === 'admin' && (
+                                <div className="flex items-center space-x-2">
+                                    <button onClick={() => handleOpenModal(user)} className="p-2 text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"><EditIcon className="h-5 w-5" /></button>
+                                    <button onClick={() => handleDeleteUser(user.id)} className="p-2 text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"><DeleteIcon className="h-5 w-5" /></button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -174,7 +178,7 @@ const Users: React.FC = () => {
                             <th scope="col" className="px-6 py-3">Status</th>
                             <th scope="col" className="px-6 py-3">Plan</th>
                             <th scope="col" className="px-6 py-3">Join Date</th>
-                            <th scope="col" className="px-6 py-3">Actions</th>
+                            {userRole === 'admin' && <th scope="col" className="px-6 py-3">Actions</th>}
                         </tr>
                     </thead>
                     <tbody>
@@ -188,10 +192,12 @@ const Users: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4">{state.products.find(p => p.id === user.planId)?.name || 'N/A'}</td>
                                 <td className="px-6 py-4">{user.joinDate}</td>
-                                <td className="px-6 py-4 flex items-center space-x-2">
-                                    <button onClick={() => handleOpenModal(user)} className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"><EditIcon className="h-5 w-5" /></button>
-                                    <button onClick={() => handleDeleteUser(user.id)} className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"><DeleteIcon className="h-5 w-5" /></button>
-                                </td>
+                                {userRole === 'admin' && (
+                                    <td className="px-6 py-4 flex items-center space-x-2">
+                                        <button onClick={() => handleOpenModal(user)} className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"><EditIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => handleDeleteUser(user.id)} className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"><DeleteIcon className="h-5 w-5" /></button>
+                                    </td>
+                                )}
                             </tr>
                         ))}
                     </tbody>
