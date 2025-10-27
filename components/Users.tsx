@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { User } from '../types';
 import Modal from './ui/Modal';
@@ -36,7 +36,7 @@ const UserForm: React.FC<{ user?: User; onSave: (user: User | Omit<User, 'id' | 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
             </div>
             <div>
@@ -48,7 +48,7 @@ const UserForm: React.FC<{ user?: User; onSave: (user: User | Omit<User, 'id' | 
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">WiFi Plan</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Plan ID</label>
                 <select value={planId || ''} onChange={(e) => setPlanId(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                     <option value="">No Plan</option>
                     {state.products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -78,6 +78,8 @@ const Users: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
+    const [currentPage, setCurrentPage] = useState(1);
+    const USERS_PER_PAGE = 50;
 
     const handleOpenModal = (user?: User) => {
         setEditingUser(user);
@@ -96,9 +98,7 @@ const Users: React.FC = () => {
                 const updatedUser = await api.updateUser(userData as User);
                 dispatch({ type: 'UPDATE_USER', payload: updatedUser });
             } else {
-                // FIX: Removed unnecessary type assertion. TypeScript correctly narrows the type of `userData`
-                // in this branch to `Omit<User, 'id' | 'joinDate'>`, so the cast is not needed and was causing an error.
-                const newUser = await api.addUser(userData);
+                const newUser = await api.addUser(userData as Omit<User, 'id' | 'joinDate'>);
                 dispatch({ type: 'ADD_USER', payload: newUser });
             }
             handleCloseModal();
@@ -122,6 +122,27 @@ const Users: React.FC = () => {
         }
     };
 
+    const formatDate = (dateString: string) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Invalid Date';
+        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+        const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+        return adjustedDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: '2-digit',
+        });
+    };
+
+    const processedUsers = useMemo(() => {
+        const sortedUsers = [...state.users].sort((a, b) => new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime());
+        const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+        return sortedUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
+    }, [state.users, currentPage]);
+    
+    const totalPages = Math.ceil(state.users.length / USERS_PER_PAGE);
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'active':
@@ -133,6 +154,40 @@ const Users: React.FC = () => {
             default:
                 return 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300';
         }
+    };
+
+    const PaginationControls = () => {
+        if (totalPages <= 1) return null;
+        return (
+            <div className="flex justify-between items-center mt-6 px-4 py-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 sm:px-6 rounded-b-lg shadow-md">
+                <div className="flex-1 flex justify-between sm:hidden">
+                    <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 text-sm font-medium rounded-md text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 disabled:opacity-50">Previous</button>
+                    <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="ml-3 relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 text-sm font-medium rounded-md text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 disabled:opacity-50">Next</button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-sm text-slate-700 dark:text-slate-400">
+                            Showing <span className="font-medium">{(currentPage - 1) * USERS_PER_PAGE + 1}</span> to <span className="font-medium">{Math.min(currentPage * USERS_PER_PAGE, state.users.length)}</span> of <span className="font-medium">{state.users.length}</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50">
+                                <span className="sr-only">Previous</span>
+                                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            </button>
+                            <span className="relative inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300">
+                                {currentPage} / {totalPages}
+                            </span>
+                             <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50">
+                                <span className="sr-only">Next</span>
+                                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        )
     };
 
     return (
@@ -147,70 +202,76 @@ const Users: React.FC = () => {
             </div>
 
             {/* Mobile View - Cards */}
-            <div className="md:hidden space-y-4">
-                {state.users.map(user => (
-                    <div key={user.id} className="bg-white dark:bg-slate-800 shadow-md rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                             <div>
-                                <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
-                                <p className="text-sm text-slate-500">{user.email}</p>
-                                <p className="text-sm text-slate-500 mt-1">{user.address}</p>
-                            </div>
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
-                                {user.status}
-                            </span>
-                        </div>
-                        <div className="mt-4 pt-4 border-t dark:border-slate-700 flex justify-between items-center text-sm">
-                             <div>
-                                <p><span className="font-semibold">Plan:</span> {state.products.find(p => p.id === user.planId)?.name || 'N/A'}</p>
-                                <p><span className="font-semibold">Joined:</span> {user.joinDate}</p>
-                            </div>
-                            {userRole === 'admin' && (
-                                <div className="flex items-center space-x-2">
-                                    <button onClick={() => handleOpenModal(user)} className="p-2 text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"><EditIcon className="h-5 w-5" /></button>
-                                    <button onClick={() => handleDeleteUser(user.id)} className="p-2 text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"><DeleteIcon className="h-5 w-5" /></button>
+            <div className="md:hidden">
+                <div className="space-y-4">
+                    {processedUsers.map(user => (
+                        <div key={user.id} className="bg-white dark:bg-slate-800 shadow-md rounded-lg p-4">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
+                                    <p className="text-sm text-slate-500">{user.email}</p>
+                                    <p className="text-sm text-slate-500 mt-1">{user.address}</p>
                                 </div>
-                            )}
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
+                                    {user.status}
+                                </span>
+                            </div>
+                            <div className="mt-4 pt-4 border-t dark:border-slate-700 flex justify-between items-center text-sm">
+                                <div>
+                                    <p><span className="font-semibold">Plan:</span> {state.products.find(p => p.id === user.planId)?.name || 'N/A'}</p>
+                                    <p><span className="font-semibold">Joined:</span> {formatDate(user.joinDate)}</p>
+                                </div>
+                                {userRole === 'admin' && (
+                                    <div className="flex items-center space-x-2">
+                                        <button onClick={() => handleOpenModal(user)} className="p-2 text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"><EditIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => handleDeleteUser(user.id)} className="p-2 text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"><DeleteIcon className="h-5 w-5" /></button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
+                {state.users.length > 0 && <PaginationControls />}
             </div>
 
             {/* Desktop View - Table */}
-            <div className="hidden md:block bg-white dark:bg-slate-800 shadow-md rounded-lg overflow-x-auto">
-                <table className="w-full text-sm text-left text-slate-500 dark:text-slate-400">
-                    <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-400">
-                        <tr>
-                            <th scope="col" className="px-6 py-3">Name</th>
-                            <th scope="col" className="px-6 py-3">Address</th>
-                            <th scope="col" className="px-6 py-3">Status</th>
-                            <th scope="col" className="px-6 py-3">Plan</th>
-                            <th scope="col" className="px-6 py-3">Join Date</th>
-                            {userRole === 'admin' && <th scope="col" className="px-6 py-3">Actions</th>}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {state.users.map(user => (
-                            <tr key={user.id} className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600">
-                                <td className="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">{user.name} <div className="text-xs text-slate-500">{user.email}</div></td>
-                                <td className="px-6 py-4">{user.address}</td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
-                                        {user.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4">{state.products.find(p => p.id === user.planId)?.name || 'N/A'}</td>
-                                <td className="px-6 py-4">{user.joinDate}</td>
-                                {userRole === 'admin' && (
-                                    <td className="px-6 py-4 flex items-center space-x-2">
-                                        <button onClick={() => handleOpenModal(user)} className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"><EditIcon className="h-5 w-5" /></button>
-                                        <button onClick={() => handleDeleteUser(user.id)} className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"><DeleteIcon className="h-5 w-5" /></button>
-                                    </td>
-                                )}
+            <div className="hidden md:block">
+                 <div className="bg-white dark:bg-slate-800 shadow-md rounded-t-lg overflow-x-auto">
+                    <table className="w-full text-sm text-left text-slate-500 dark:text-slate-400">
+                        <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-400">
+                            <tr>
+                                <th scope="col" className="px-6 py-3">Name</th>
+                                <th scope="col" className="px-6 py-3">Address</th>
+                                <th scope="col" className="px-6 py-3">Status</th>
+                                <th scope="col" className="px-6 py-3">Plan</th>
+                                <th scope="col" className="px-6 py-3">Join Date</th>
+                                {userRole === 'admin' && <th scope="col" className="px-6 py-3">Actions</th>}
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {processedUsers.map(user => (
+                                <tr key={user.id} className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600">
+                                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">{user.name} <div className="text-xs text-slate-500">{user.email}</div></td>
+                                    <td className="px-6 py-4">{user.address}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
+                                            {user.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">{state.products.find(p => p.id === user.planId)?.name || 'N/A'}</td>
+                                    <td className="px-6 py-4">{formatDate(user.joinDate)}</td>
+                                    {userRole === 'admin' && (
+                                        <td className="px-6 py-4 flex items-center space-x-2">
+                                            <button onClick={() => handleOpenModal(user)} className="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"><EditIcon className="h-5 w-5" /></button>
+                                            <button onClick={() => handleDeleteUser(user.id)} className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"><DeleteIcon className="h-5 w-5" /></button>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                 </div>
+                 {state.users.length > 0 && <PaginationControls />}
             </div>
 
             <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingUser ? 'Edit Subscriber' : 'Add New Subscriber'}>

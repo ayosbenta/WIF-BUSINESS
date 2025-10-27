@@ -69,6 +69,7 @@ function addUser(payload) {
     id: Utilities.getUuid(),
     joinDate: new Date().toISOString().split('T')[0],
     name: payload.name,
+    address: payload.address,
     email: payload.email,
     planId: payload.planId,
     status: payload.status,
