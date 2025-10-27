@@ -107,20 +107,22 @@ const Products: React.FC = () => {
                 dispatch({ type: 'ADD_PRODUCT', payload: newProduct });
             }
             handleCloseModal();
-        } catch(error) {
+        } catch (error) {
             console.error("Failed to save product:", error);
+            alert(`Error: ${error instanceof Error ? error.message : "An unknown error occurred."}`);
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleDeleteProduct = async (productId: string) => {
-        if (window.confirm('Are you sure you want to delete this plan?')) {
+        if (window.confirm('Are you sure you want to delete this plan? This will not affect existing users on this plan.')) {
             try {
                 await api.deleteProduct(productId);
                 dispatch({ type: 'DELETE_PRODUCT', payload: productId });
-            } catch(error) {
+            } catch (error) {
                 console.error("Failed to delete product:", error);
+                alert(`Error: ${error instanceof Error ? error.message : "An unknown error occurred."}`);
             }
         }
     };

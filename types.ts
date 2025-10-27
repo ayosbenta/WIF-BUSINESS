@@ -28,3 +28,20 @@ export interface Payment {
   date: string;
   method: PaymentMethod;
 }
+
+interface AppState {
+  users: User[];
+  products: Product[];
+  payments: Payment[];
+}
+
+
+export type Action =
+  | { type: 'LOAD_DATA'; payload: AppState }
+  | { type: 'ADD_USER'; payload: User }
+  | { type: 'UPDATE_USER'; payload: User }
+  | { type: 'DELETE_USER'; payload: string }
+  | { type: 'ADD_PRODUCT'; payload: Product }
+  | { type: 'UPDATE_PRODUCT'; payload: Product }
+  | { type: 'DELETE_PRODUCT'; payload: string }
+  | { type: 'ADD_PAYMENT'; payload: Payment };

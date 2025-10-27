@@ -7,18 +7,62 @@ import Users from './components/Users';
 import Products from './components/Products';
 import Payments from './components/Payments';
 import { WifiIcon } from './components/icons';
+import { dataService } from './services/api';
 
 type View = 'dashboard' | 'users' | 'products' | 'payments';
+
+const LoadingScreen: React.FC = () => (
+    <div className="flex flex-col items-center justify-center h-screen bg-slate-100 dark:bg-slate-900">
+        <WifiIcon className="w-16 h-16 text-indigo-600 animate-pulse" />
+        <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">Loading your data...</p>
+    </div>
+);
+
+const ErrorScreen: React.FC<{ message: string; onRetry: () => void }> = ({ message, onRetry }) => (
+    <div className="flex items-center justify-center h-screen bg-slate-100 dark:bg-slate-900 p-4">
+        <div className="w-full max-w-lg p-8 space-y-6 bg-white rounded-lg shadow-2xl dark:bg-slate-800 text-center">
+            <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Failed to Load Data</h2>
+            <p className="text-slate-600 dark:text-slate-400">{message}</p>
+            <div className="p-4 text-sm text-left bg-slate-50 dark:bg-slate-700 rounded-md">
+                <h3 className="font-semibold text-slate-700 dark:text-slate-200 mb-2">Troubleshooting Steps:</h3>
+                <ul className="list-disc list-inside space-y-1 text-slate-500 dark:text-slate-300">
+                    <li>Ensure you have a stable internet connection.</li>
+                    <li>The Google Sheet must be public. Set sharing to <strong>"Anyone with the link can view"</strong>.</li>
+                    <li>Verify the sheet contains the required tabs: <strong>Users</strong>, <strong>Products</strong>, and <strong>Payments</strong>.</li>
+                </ul>
+            </div>
+            <button
+                onClick={onRetry}
+                className="inline-flex items-center px-6 py-3 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 shadow-lg"
+            >
+                Retry
+            </button>
+        </div>
+    </div>
+);
+
 
 const AppContent: React.FC = () => {
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { isLoading } = useAppContext();
-
+  const { state, isLoading, error, reloadData } = useAppContext();
+  
   // Close sidebar when view changes on mobile
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [activeView]);
+
+  const handleExport = () => {
+      dataService.exportToFile(state, `wifi_dashboard_export_${new Date().toISOString().split('T')[0]}.xlsx`);
+  }
+
+  if (isLoading) {
+      return <LoadingScreen />;
+  }
+
+  if (error) {
+      return <ErrorScreen message={error} onRetry={reloadData} />;
+  }
 
   const renderView = () => {
     switch (activeView) {
@@ -50,22 +94,11 @@ const AppContent: React.FC = () => {
     }
   };
   
-  if (isLoading) {
-      return (
-        <div className="flex items-center justify-center h-screen bg-slate-100 dark:bg-slate-900">
-            <div className="flex flex-col items-center">
-                <WifiIcon className="h-12 w-12 text-indigo-600 animate-pulse" />
-                <p className="mt-4 text-lg text-slate-700 dark:text-slate-300">Loading Dashboard...</p>
-            </div>
-        </div>
-      );
-  }
-
   return (
       <div className="flex h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
         <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header title={getTitle()} onMenuClick={() => setIsSidebarOpen(true)} />
+          <Header title={getTitle()} onMenuClick={() => setIsSidebarOpen(true)} onExport={handleExport} />
           <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 sm:p-6 lg:p-8">
             {isSidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" onClick={() => setIsSidebarOpen(false)}></div>}
             {renderView()}

@@ -1,83 +1,130 @@
-import { User, Product, Payment, PaymentMethod } from '../types';
+import { User, Product, Payment, Action } from '../types';
 
-// --- MOCK DATABASE ---
-// This simulates a backend database. In a real application, these functions
-// would make HTTP requests to a server-side API.
+// IMPORTANT: Replace this with your actual Google Apps Script Web App URL
+// FIX: Explicitly typed as `string` to prevent TypeScript from inferring a literal type,
+// which caused a compile-time error in the comparison check below.
+const APPS_SCRIPT_URL: string = 'https://script.google.com/macros/s/AKfycbzinXgRPFJzzoa7bPOOiq6YLV552hdimavf34ALMcQYaSL-0bxTr7FPJ5FdYifMC2LIog/exec';
 
-let users: User[] = [
-    { id: 'user-1', name: 'John Doe', email: 'john.doe@example.com', planId: 'prod-1', status: 'active', joinDate: '2023-01-15' },
-    { id: 'user-2', name: 'Jane Smith', email: 'jane.smith@example.com', planId: 'prod-2', status: 'active', joinDate: '2023-02-20' },
-    { id: 'user-3', name: 'Peter Jones', email: 'peter.jones@example.com', planId: 'prod-3', status: 'inactive', joinDate: '2023-03-10' },
-];
+interface AppData {
+    users: User[];
+    products: Product[];
+    payments: Payment[];
+}
 
-let products: Product[] = [
-    { id: 'prod-1', name: 'Starter Plan', speed: 10, price: 999, description: 'Perfect for browsing and social media. Enjoy seamless connectivity for your daily needs.' },
-    { id: 'prod-2', name: 'Family Plan', speed: 50, price: 1499, description: 'Ideal for streaming HD movies and online gaming. Connect multiple devices without slowdowns.' },
-    { id: 'prod-3', name: 'Pro Plan', speed: 100, price: 2499, description: 'Ultimate speed for professionals and gamers. Experience lightning-fast downloads and uploads.' },
-];
+// Helper function to handle API requests
+async function performRequest(action: string, payload?: any) {
+    if (APPS_SCRIPT_URL === 'PASTE_YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+        throw new Error("Please update the APPS_SCRIPT_URL in services/api.ts with your deployed Google Apps Script URL.");
+    }
 
-let payments: Payment[] = [
-    { id: 'pay-1', userId: 'user-1', amount: 999, date: '2024-05-01', method: PaymentMethod.GCASH },
-    { id: 'pay-2', userId: 'user-2', amount: 1499, date: '2024-05-03', method: PaymentMethod.CASH },
-];
+    const response = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: {
+            'Content-Type': 'text/plain;charset=utf-8', // Required for Apps Script
+        },
+        body: JSON.stringify({ action, payload }),
+    });
 
-const simulateDelay = (ms: number) => new Promise(res => setTimeout(res, ms));
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Error: ${response.statusText} - ${errorText}`);
+    }
 
-// --- API FUNCTIONS ---
+    const result = await response.json();
+    if (result.status === 'error') {
+        throw new Error(result.message);
+    }
+    return result.data;
+}
+
 
 export const api = {
-    // Fetch all data
-    getInitialData: async () => {
-        await simulateDelay(500);
-        return {
-            users: [...users],
-            products: [...products],
-            payments: [...payments],
-        };
+    /**
+     * Fetches all initial data from the Google Sheet.
+     */
+    getAllData: (): Promise<AppData> => {
+        return performRequest('GET_ALL_DATA');
     },
-    // User CRUD
-    addUser: async (user: Omit<User, 'id' | 'joinDate'>): Promise<User> => {
-        await simulateDelay(300);
-        const newUser: User = {
-            ...user,
-            id: `user-${Date.now()}`,
-            joinDate: new Date().toISOString().split('T')[0],
-        };
-        users.push(newUser);
-        return newUser;
+
+    /**
+     * Sends a command to add a new user to the sheet.
+     * @param userPayload The new user data (without id and joinDate).
+     * @returns The newly created user with id and joinDate from the backend.
+     */
+    addUser: (userPayload: Omit<User, 'id' | 'joinDate'>): Promise<User> => {
+        return performRequest('ADD_USER', userPayload);
     },
-    updateUser: async (user: User): Promise<User> => {
-        await simulateDelay(300);
-        users = users.map(u => u.id === user.id ? user : u);
-        return user;
+
+    /**
+     * Sends a command to update an existing user.
+     * @param user The full user object with updated data.
+     */
+    updateUser: (user: User): Promise<User> => {
+        return performRequest('UPDATE_USER', user);
     },
-    deleteUser: async (userId: string): Promise<string> => {
-        await simulateDelay(300);
-        users = users.filter(u => u.id !== userId);
-        return userId;
+
+    /**
+     * Sends a command to delete a user by their ID.
+     * @param userId The ID of the user to delete.
+     */
+    deleteUser: (userId: string): Promise<{ id: string }> => {
+        return performRequest('DELETE_USER', { id: userId });
     },
-    // Product CRUD
-    addProduct: async (product: Omit<Product, 'id'>): Promise<Product> => {
-        await simulateDelay(300);
-        const newProduct: Product = { ...product, id: `prod-${Date.now()}` };
-        products.push(newProduct);
-        return newProduct;
+
+    /**
+     * Sends a command to add a new product.
+     * @param productPayload The new product data (without id).
+     * @returns The newly created product with an id from the backend.
+     */
+    addProduct: (productPayload: Omit<Product, 'id'>): Promise<Product> => {
+        return performRequest('ADD_PRODUCT', productPayload);
     },
-    updateProduct: async (product: Product): Promise<Product> => {
-        await simulateDelay(300);
-        products = products.map(p => p.id === product.id ? product : p);
-        return product;
+
+    /**
+     * Sends a command to update an existing product.
+     * @param product The full product object with updated data.
+     */
+    updateProduct: (product: Product): Promise<Product> => {
+        return performRequest('UPDATE_PRODUCT', product);
     },
-    deleteProduct: async (productId: string): Promise<string> => {
-        await simulateDelay(300);
-        products = products.filter(p => p.id !== productId);
-        return productId;
+
+    /**
+     * Sends a command to delete a product by its ID.
+     * @param productId The ID of the product to delete.
+     */
+    deleteProduct: (productId: string): Promise<{ id: string }> => {
+        return performRequest('DELETE_PRODUCT', { id: productId });
     },
-    // Payment
-    addPayment: async (payment: Omit<Payment, 'id'>): Promise<Payment> => {
-        await simulateDelay(300);
-        const newPayment: Payment = { ...payment, id: `pay-${Date.now()}` };
-        payments.push(newPayment);
-        return newPayment;
+
+    /**
+     * Sends a command to add a new payment.
+     * @param paymentPayload The new payment data (without id and date).
+     * @returns The newly created payment with id and date from the backend.
+     */
+    addPayment: (paymentPayload: Omit<Payment, 'id' | 'date'>): Promise<Payment> => {
+        return performRequest('ADD_PAYMENT', paymentPayload);
     },
+};
+
+// Keep export functionality for local backups
+declare var XLSX: any;
+export const dataService = {
+    exportToFile: (data: AppData, filename: string = 'wifi_business_data.xlsx'): void => {
+        try {
+            const usersSheet = XLSX.utils.json_to_sheet(data.users);
+            const productsSheet = XLSX.utils.json_to_sheet(data.products);
+            const paymentsSheet = XLSX.utils.json_to_sheet(data.payments);
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, usersSheet, 'Users');
+            XLSX.utils.book_append_sheet(workbook, productsSheet, 'Products');
+            XLSX.utils.book_append_sheet(workbook, paymentsSheet, 'Payments');
+
+            XLSX.writeFile(workbook, filename);
+        } catch (error) {
+            console.error("Error exporting data to Excel:", error);
+            alert("An error occurred while trying to export the data.");
+        }
+    }
 };

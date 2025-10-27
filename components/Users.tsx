@@ -90,24 +90,28 @@ const Users: React.FC = () => {
                 const updatedUser = await api.updateUser(userData as User);
                 dispatch({ type: 'UPDATE_USER', payload: updatedUser });
             } else {
-                const newUser = await api.addUser(userData as Omit<User, 'id' | 'joinDate'>);
+                // FIX: Removed unnecessary type assertion. TypeScript correctly narrows the type of `userData`
+                // in this branch to `Omit<User, 'id' | 'joinDate'>`, so the cast is not needed and was causing an error.
+                const newUser = await api.addUser(userData);
                 dispatch({ type: 'ADD_USER', payload: newUser });
             }
             handleCloseModal();
         } catch (error) {
             console.error("Failed to save user:", error);
+            alert(`Error: ${error instanceof Error ? error.message : "An unknown error occurred."}`);
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleDeleteUser = async (userId: string) => {
-        if (window.confirm('Are you sure you want to delete this user?')) {
+        if (window.confirm('Are you sure you want to delete this user? This action will be permanent.')) {
             try {
                 await api.deleteUser(userId);
                 dispatch({ type: 'DELETE_USER', payload: userId });
             } catch (error) {
                 console.error("Failed to delete user:", error);
+                alert(`Error: ${error instanceof Error ? error.message : "An unknown error occurred."}`);
             }
         }
     };

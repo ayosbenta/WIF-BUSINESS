@@ -1,9 +1,18 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Payment, PaymentMethod, User, Product } from '../types';
 import Modal from './ui/Modal';
-import { PlusIcon, PrintIcon, WifiIcon } from './icons';
+import { PlusIcon, PrintIcon, WifiIcon, DownloadIcon } from './icons';
 import { api } from '../services/api';
+
+// Define types for window-injected libraries to satisfy TypeScript
+declare global {
+    interface Window {
+        jspdf: any;
+        html2canvas: any;
+    }
+}
+
 
 const GcashModalContent: React.FC<{ amount: number; onConfirm: () => void }> = ({ amount, onConfirm }) => (
     <div className="text-center">
@@ -17,13 +26,12 @@ const GcashModalContent: React.FC<{ amount: number; onConfirm: () => void }> = (
     </div>
 );
 
-const PaymentForm: React.FC<{ onSave: (payment: Omit<Payment, 'id'>) => Promise<void>; onCancel: () => void }> = ({ onSave, onCancel }) => {
+const PaymentForm: React.FC<{ onSave: (payment: Omit<Payment, 'id' | 'date'>) => void; onCancel: () => void; isProcessing: boolean }> = ({ onSave, onCancel, isProcessing }) => {
     const { state } = useAppContext();
     const [userId, setUserId] = useState('');
     const [amount, setAmount] = useState(0);
     const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
     const [isGcashModalOpen, setIsGcashModalOpen] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false);
 
     const selectedUser = useMemo(() => state.users.find(u => u.id === userId), [userId, state.users]);
     const userPlan = useMemo(() => state.products.find(p => p.id === selectedUser?.planId), [selectedUser, state.products]);
@@ -50,22 +58,14 @@ const PaymentForm: React.FC<{ onSave: (payment: Omit<Payment, 'id'>) => Promise<
         }
     };
     
-    const confirmPayment = async () => {
-        setIsProcessing(true);
-        const newPayment = {
+    const confirmPayment = () => {
+        const newPaymentData = {
             userId,
             amount,
             method,
-            date: new Date().toISOString().split('T')[0],
         };
-        try {
-            await onSave(newPayment);
-            setIsGcashModalOpen(false);
-        } catch(error) {
-            console.error("Failed to save payment", error);
-        } finally {
-            setIsProcessing(false);
-        }
+        onSave(newPaymentData);
+        setIsGcashModalOpen(false);
     }
 
     return (
@@ -119,7 +119,7 @@ const ReceiptContent: React.FC<{ payment: Payment; user?: User; product?: Produc
                 <p>{user?.email}</p>
             </div>
             <div className="text-left sm:text-right">
-                <p><span className="font-bold">Receipt #:</span> {payment.id}</p>
+                <p><span className="font-bold">Receipt #:</span> {payment.id.substring(0, 8)}</p>
                 <p><span className="font-bold">Date:</span> {payment.date}</p>
             </div>
         </div>
@@ -163,14 +163,61 @@ const ReceiptContent: React.FC<{ payment: Payment; user?: User; product?: Produc
 const Payments: React.FC = () => {
     const { state, dispatch } = useAppContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
     const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
-    const receiptRef = useRef<HTMLDivElement>(null);
+    const [generatingPdfFor, setGeneratingPdfFor] = useState<Payment | null>(null);
 
-    const handleSavePayment = async (paymentData: Omit<Payment, 'id'>) => {
-        const newPayment = await api.addPayment(paymentData);
-        dispatch({ type: 'ADD_PAYMENT', payload: newPayment });
-        setIsModalOpen(false);
+    const receiptRef = useRef<HTMLDivElement>(null);
+    const pdfRef = useRef<HTMLDivElement>(null);
+
+    const handleSavePayment = async (paymentData: Omit<Payment, 'id' | 'date'>) => {
+        setIsProcessing(true);
+        try {
+            const newPayment = await api.addPayment(paymentData);
+            dispatch({ type: 'ADD_PAYMENT', payload: newPayment });
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error("Failed to add payment:", error);
+            alert(`Error: ${error instanceof Error ? error.message : "An unknown error occurred."}`);
+        } finally {
+            setIsProcessing(false);
+        }
     };
+
+    const handleDownloadPdf = async (element: HTMLDivElement | null, paymentId: string) => {
+        if (!element || isDownloading) return;
+        setIsDownloading(true);
+        try {
+            element.classList.add('pdf-render');
+            const { jsPDF } = window.jspdf;
+            const canvas = await window.html2canvas(element, { scale: 2 });
+            element.classList.remove('pdf-render');
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`receipt-${paymentId.substring(0, 8)}.pdf`);
+        } catch (error) {
+            console.error("Failed to generate PDF:", error);
+            alert("Sorry, there was an error creating the PDF.");
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (generatingPdfFor && pdfRef.current) {
+            setTimeout(() => {
+                handleDownloadPdf(pdfRef.current, generatingPdfFor.id);
+                setGeneratingPdfFor(null);
+            }, 100);
+        }
+    }, [generatingPdfFor]);
 
     const handlePrint = () => {
         const printContent = receiptRef.current?.innerHTML;
@@ -201,9 +248,19 @@ const Payments: React.FC = () => {
 
     const selectedUserForReceipt = useMemo(() => state.users.find(u => u.id === receiptPayment?.userId), [receiptPayment, state.users]);
     const selectedProductForReceipt = useMemo(() => state.products.find(p => p.id === selectedUserForReceipt?.planId), [selectedUserForReceipt, state.products]);
+    
+    const userForPdf = useMemo(() => state.users.find(u => u.id === generatingPdfFor?.userId), [generatingPdfFor, state.users]);
+    const productForPdf = useMemo(() => state.products.find(p => p.id === userForPdf?.planId), [userForPdf, state.products]);
 
     return (
         <div>
+            <style>{`
+                .pdf-render {
+                    background-color: white !important;
+                    color: black !important;
+                }
+            `}</style>
+
             <div className="flex justify-end mb-4">
                 <button onClick={() => setIsModalOpen(true)} className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-lg">
                     <PlusIcon className="h-5 w-5 mr-2" />
@@ -222,9 +279,14 @@ const Payments: React.FC = () => {
                                 <p className="font-bold text-slate-900 dark:text-white">{user?.name || 'Unknown User'}</p>
                                 <p className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">₱{payment.amount.toLocaleString()}</p>
                             </div>
-                             <button onClick={() => setReceiptPayment(payment)} className="p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full" aria-label="Print receipt">
-                                <PrintIcon className="h-5 w-5" />
-                            </button>
+                            <div className="flex space-x-2">
+                                <button onClick={() => setGeneratingPdfFor(payment)} className="p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full" aria-label="Download receipt">
+                                    <DownloadIcon className="h-5 w-5" />
+                                </button>
+                                <button onClick={() => setReceiptPayment(payment)} className="p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full" aria-label="Print receipt">
+                                    <PrintIcon className="h-5 w-5" />
+                                </button>
+                            </div>
                         </div>
                         <div className="mt-4 pt-4 border-t dark:border-slate-700 flex justify-between items-center text-sm">
                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${payment.method === PaymentMethod.GCASH ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'}`}>
@@ -261,7 +323,10 @@ const Payments: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">{payment.date}</td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-4 flex space-x-2">
+                                         <button onClick={() => setGeneratingPdfFor(payment)} className="p-1 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400" aria-label="Download receipt">
+                                            <DownloadIcon className="h-5 w-5" />
+                                        </button>
                                         <button onClick={() => setReceiptPayment(payment)} className="p-1 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400" aria-label="Print receipt">
                                             <PrintIcon className="h-5 w-5" />
                                         </button>
@@ -274,7 +339,7 @@ const Payments: React.FC = () => {
             </div>
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Process New Payment">
-                <PaymentForm onSave={handleSavePayment} onCancel={() => setIsModalOpen(false)} />
+                <PaymentForm onSave={handleSavePayment} onCancel={() => setIsModalOpen(false)} isProcessing={isProcessing} />
             </Modal>
 
             <Modal isOpen={!!receiptPayment} onClose={() => setReceiptPayment(null)} title="Payment Receipt">
@@ -289,10 +354,23 @@ const Payments: React.FC = () => {
                                 <PrintIcon className="h-5 w-5 mr-2" />
                                 Print Receipt
                            </button>
+                            <button type="button" onClick={() => handleDownloadPdf(receiptRef.current, receiptPayment.id)} disabled={isDownloading} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                                <DownloadIcon className="h-5 w-5 mr-2" />
+                                {isDownloading ? 'Downloading...' : 'Download PDF'}
+                            </button>
                         </div>
                     </div>
                 )}
             </Modal>
+            
+            {/* Off-screen renderer for PDF generation from the main list */}
+            {generatingPdfFor && (
+                <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '600px' }} className="bg-white">
+                    <div ref={pdfRef}>
+                        <ReceiptContent payment={generatingPdfFor} user={userForPdf} product={productForPdf} />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
