@@ -6,11 +6,12 @@ import Dashboard from './components/Dashboard';
 import Users from './components/Users';
 import Products from './components/Products';
 import Payments from './components/Payments';
+import DueDates from './components/DueDates';
 import LoginPage from './components/LoginPage';
 import { WifiIcon } from './components/icons';
 import { dataService } from './services/api';
 
-type View = 'dashboard' | 'users' | 'products' | 'payments';
+type View = 'dashboard' | 'users' | 'plans' | 'payments' | 'duedates';
 export type UserRole = 'admin' | 'collector';
 
 const LoadingScreen: React.FC = () => (
@@ -36,7 +37,7 @@ const ErrorScreen: React.FC<{ message: string; onRetry: () => void }> = ({ messa
 );
 
 
-const AppContent: React.FC = () => {
+const AppContent: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const { state, isLoading, error, reloadData, userRole } = useAppContext();
   const [activeView, setActiveView] = useState<View>(userRole === 'collector' ? 'payments' : 'dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -64,8 +65,10 @@ const AppContent: React.FC = () => {
         return userRole === 'admin' ? <Dashboard /> : <Payments />;
       case 'users':
         return userRole === 'admin' ? <Users /> : <Payments />;
-      case 'products':
+      case 'plans':
         return userRole === 'admin' ? <Products /> : <Payments />;
+      case 'duedates':
+        return userRole === 'admin' ? <DueDates /> : <Payments />;
       case 'payments':
         return <Payments />;
       default:
@@ -79,8 +82,10 @@ const AppContent: React.FC = () => {
         return 'Dashboard Overview';
       case 'users':
         return 'User Management';
-      case 'products':
+      case 'plans':
         return 'WiFi Plans';
+      case 'duedates':
+        return 'Due Dates & Reminders';
       case 'payments':
         return 'Payment Processing';
       default:
@@ -90,7 +95,7 @@ const AppContent: React.FC = () => {
   
   return (
       <div className="flex h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
-        <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+        <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} onLogout={onLogout} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header title={getTitle()} onMenuClick={() => setIsSidebarOpen(true)} onExport={handleExport} />
           <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 sm:p-6 lg:p-8">
@@ -107,6 +112,11 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
 
+  const handleLogout = () => {
+      setIsAuthenticated(false);
+      setUserRole(null);
+  }
+
   if (!isAuthenticated) {
     return <LoginPage onLoginSuccess={(role) => {
         setUserRole(role);
@@ -116,7 +126,7 @@ const App: React.FC = () => {
   
   return (
     <AppProvider userRole={userRole}>
-      <AppContent />
+      <AppContent onLogout={handleLogout} />
     </AppProvider>
   );
 };
