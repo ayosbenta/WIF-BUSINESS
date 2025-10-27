@@ -8,6 +8,7 @@ import { api } from '../services/api';
 const UserForm: React.FC<{ user?: User; onSave: (user: User | Omit<User, 'id' | 'joinDate'>) => void; onCancel: () => void; isSaving: boolean; }> = ({ user, onSave, onCancel, isSaving }) => {
     const { state } = useAppContext();
     const [name, setName] = useState(user?.name || '');
+    const [address, setAddress] = useState(user?.address || '');
     const [email, setEmail] = useState(user?.email || '');
     const [planId, setPlanId] = useState(user?.planId || '');
     const [status, setStatus] = useState<'active' | 'inactive' | 'pending'>(user?.status || 'pending');
@@ -18,6 +19,7 @@ const UserForm: React.FC<{ user?: User; onSave: (user: User | Omit<User, 'id' | 
             id: user?.id,
             name,
             email,
+            address,
             planId: planId || null,
             status,
             joinDate: user?.joinDate,
@@ -36,6 +38,10 @@ const UserForm: React.FC<{ user?: User; onSave: (user: User | Omit<User, 'id' | 
             <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Address</label>
+                <textarea value={address} onChange={(e) => setAddress(e.target.value)} required rows={2} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
             </div>
             <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
@@ -148,6 +154,7 @@ const Users: React.FC = () => {
                              <div>
                                 <p className="font-bold text-slate-900 dark:text-white">{user.name}</p>
                                 <p className="text-sm text-slate-500">{user.email}</p>
+                                <p className="text-sm text-slate-500 mt-1">{user.address}</p>
                             </div>
                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
                                 {user.status}
@@ -175,6 +182,7 @@ const Users: React.FC = () => {
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-400">
                         <tr>
                             <th scope="col" className="px-6 py-3">Name</th>
+                            <th scope="col" className="px-6 py-3">Address</th>
                             <th scope="col" className="px-6 py-3">Status</th>
                             <th scope="col" className="px-6 py-3">Plan</th>
                             <th scope="col" className="px-6 py-3">Join Date</th>
@@ -185,6 +193,7 @@ const Users: React.FC = () => {
                         {state.users.map(user => (
                             <tr key={user.id} className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600">
                                 <td className="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">{user.name} <div className="text-xs text-slate-500">{user.email}</div></td>
+                                <td className="px-6 py-4">{user.address}</td>
                                 <td className="px-6 py-4">
                                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(user.status)}`}>
                                         {user.status}
