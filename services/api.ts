@@ -1,8 +1,8 @@
 import { User, Product, Payment } from '../types';
 
-// The URL for your deployed Google Apps Script.
-// This is read from environment variables to make it compatible with deployment platforms like Vercel.
-const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
+// IMPORTANT: Replace this with your own deployed Google Apps Script URL.
+// FIX: Widened the type to string to resolve comparison error on line 14.
+const APPS_SCRIPT_URL: string = 'https://script.google.com/macros/s/AKfycbzinXgRPFJzzoa7bPOOiq6YLV552hdimavf34ALMcQYaSL-0bxTr7FPJ5FdYifMC2LIog/exec';
 
 interface AppData {
     users: User[];
@@ -12,8 +12,8 @@ interface AppData {
 
 // Helper function to handle API requests
 async function performRequest(action: string, payload?: any) {
-    if (!APPS_SCRIPT_URL) {
-        throw new Error("The Google Apps Script URL is not configured. Please set the APPS_SCRIPT_URL environment variable in your Vercel project settings.");
+    if (APPS_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE' || !APPS_SCRIPT_URL) {
+        throw new Error("Please replace 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE' in services/api.ts with your actual Google Apps Script URL.");
     }
 
     const response = await fetch(APPS_SCRIPT_URL, {

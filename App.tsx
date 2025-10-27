@@ -25,14 +25,6 @@ const ErrorScreen: React.FC<{ message: string; onRetry: () => void }> = ({ messa
         <div className="w-full max-w-lg p-8 space-y-6 bg-white rounded-lg shadow-2xl dark:bg-slate-800 text-center">
             <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Failed to Load Data</h2>
             <p className="text-slate-600 dark:text-slate-400">{message}</p>
-            <div className="p-4 text-sm text-left bg-slate-50 dark:bg-slate-700 rounded-md">
-                <h3 className="font-semibold text-slate-700 dark:text-slate-200 mb-2">Troubleshooting Steps:</h3>
-                <ul className="list-disc list-inside space-y-1 text-slate-500 dark:text-slate-300">
-                    <li>Ensure you have a stable internet connection.</li>
-                    <li>The Google Sheet must be public. Set sharing to <strong>"Anyone with the link can view"</strong>.</li>
-                    <li>Verify the sheet contains the required tabs: <strong>Users</strong>, <strong>Products</strong>, and <strong>Payments</strong>.</li>
-                </ul>
-            </div>
             <button
                 onClick={onRetry}
                 className="inline-flex items-center px-6 py-3 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 shadow-lg"
