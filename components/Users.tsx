@@ -59,7 +59,7 @@ const UserForm: React.FC<{ user?: User; onSave: (user: User | Omit<User, 'id' | 
             <div className="flex justify-end space-x-2 pt-4">
                 <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-slate-100 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500">Cancel</button>
                 <button type="submit" disabled={isSaving} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                    {isSaving ? 'Saving...' : 'Save User'}
+                    {isSaving ? 'Saving...' : 'Save Subscriber'}
                 </button>
             </div>
         </form>
@@ -105,7 +105,7 @@ const Users: React.FC = () => {
     };
 
     const handleDeleteUser = async (userId: string) => {
-        if (window.confirm('Are you sure you want to delete this user? This action will be permanent.')) {
+        if (window.confirm('Are you sure you want to delete this subscriber? This action will be permanent.')) {
             try {
                 await api.deleteUser(userId);
                 dispatch({ type: 'DELETE_USER', payload: userId });
@@ -135,7 +135,7 @@ const Users: React.FC = () => {
                 {userRole === 'admin' && (
                     <button onClick={() => handleOpenModal()} className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-lg">
                         <PlusIcon className="h-5 w-5 mr-2" />
-                        Add User
+                        Add Subscriber
                     </button>
                 )}
             </div>
@@ -204,7 +204,7 @@ const Users: React.FC = () => {
                 </table>
             </div>
 
-            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingUser ? 'Edit User' : 'Add New User'}>
+            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingUser ? 'Edit Subscriber' : 'Add New Subscriber'}>
                 <UserForm user={editingUser} onSave={handleSaveUser} onCancel={handleCloseModal} isSaving={isSaving} />
             </Modal>
         </div>

@@ -81,7 +81,7 @@ const AppContent: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       case 'dashboard':
         return 'Dashboard Overview';
       case 'users':
-        return 'User Management';
+        return 'Subscriber Management';
       case 'plans':
         return 'WiFi Plans';
       case 'duedates':

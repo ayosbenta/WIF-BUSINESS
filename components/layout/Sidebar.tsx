@@ -73,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, isOpen, se
                             activeView={activeView}
                             setActiveView={setActiveView}
                             icon={<UsersIcon className="h-6 w-6" />}
-                            label="Users"
+                            label="Subscribers"
                         />
                         <NavItem
                             view="plans"
